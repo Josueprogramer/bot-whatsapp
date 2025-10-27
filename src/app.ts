@@ -35,6 +35,22 @@ const main = async () => {
   // 🧩 Builderbot ya crea el servidor en este punto
   httpServer(+PORT);
 
+  // ✅ Endpoint para la verificación inicial de Meta
+app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode === "subscribe" && token === config.verifyToken) {
+    console.log("✅ Webhook verificado correctamente por Meta");
+    res.status(200).send(challenge);
+  } else {
+    console.error("❌ Verificación de Webhook fallida");
+    res.sendStatus(403);
+  }
+});
+
+
   // ⚡ Endpoint para recibir mensajes de Meta
   app.post("/webhook", async (req, res) => {
     try {
