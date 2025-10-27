@@ -33,6 +33,21 @@ const main = async () => {
     database: new Database(),
   });
 
+  app.get("/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode === "subscribe" && token === config.verifyToken) {
+    console.log("✅ WEBHOOK VERIFICADO CORRECTAMENTE!");
+    res.status(200).send(challenge);
+  } else {
+    console.log("❌ Error verificando webhook");
+    res.sendStatus(403);
+  }
+});
+
+
   // ⚡ Endpoint para verificar el webhook de Meta
   app.get("/webhook", (req, res) => {
     const verifyToken = config.verifyToken;
