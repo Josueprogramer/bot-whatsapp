@@ -14,7 +14,6 @@ if (!fs.existsSync(logDir)) {
 const logPath = path.join(logDir, "core.class.log");
 const logStream = fs.createWriteStream(logPath, { flags: "a" });
 
-// 🎯 Redirigir console.log a archivo + consola
 const originalLog = console.log;
 console.log = function (...args) {
   logStream.write("[LOG] " + args.join(" ") + "\n");
@@ -33,44 +32,18 @@ const main = async () => {
     database: new Database(),
   });
 
-  // ✅ 1️⃣ Endpoint de verificación de Webhook (obligatorio para Meta)
-  app.get("/webhook", (req, res) => {
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
+  // 🧩 Builderbot ya crea el servidor en este punto
+  httpServer(+PORT);
 
-    if (mode === "subscribe" && token === config.verifyToken) {
-      console.log("✅ WEBHOOK VERIFICADO CORRECTAMENTE!");
-      res.status(200).send(challenge);
-    } else {
-      console.log("❌ Error verificando webhook");
-      res.sendStatus(403);
-    }
-  });
-
-  // ✅ 2️⃣ Endpoint para recibir mensajes
+  // ⚡ Endpoint para recibir mensajes de Meta
   app.post("/webhook", async (req, res) => {
-    console.log("📩 Webhook recibido:", JSON.stringify(req.body, null, 2));
-
-    // ⚡ Meta necesita una respuesta rápida
-    res.sendStatus(200);
-
     try {
-      await handleCtx(req.body); // procesa el mensaje con Builderbot
+      res.sendStatus(200);
+      await handleCtx(req.body);
     } catch (err) {
       console.error("❌ Error en handleCtx:", err);
     }
   });
-
-  // 🛜 Levantar servidor Express
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-    console.log(`[GET]: http://localhost:${PORT}/webhook`);
-    console.log(`[POST]: http://localhost:${PORT}/webhook`);
-  });
-
-  // 🚀 Iniciar el bot internamente
-  httpServer(+PORT);
 };
 
 main();
