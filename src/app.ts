@@ -27,57 +27,50 @@ app.use(express.json());
 const PORT = config.PORT || 8080;
 
 const main = async () => {
-  const { handleCtx } = await createBot({
+  const { handleCtx, httpServer } = await createBot({
     flow: templates,
     provider: provider,
     database: new Database(),
   });
 
+  // ✅ 1️⃣ Endpoint de verificación de Webhook (obligatorio para Meta)
   app.get("/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
-
-  if (mode === "subscribe" && token === config.verifyToken) {
-    console.log("✅ WEBHOOK VERIFICADO CORRECTAMENTE!");
-    res.status(200).send(challenge);
-  } else {
-    console.log("❌ Error verificando webhook");
-    res.sendStatus(403);
-  }
-});
-
-
-  // ⚡ Endpoint para verificar el webhook de Meta
-  app.get("/webhook", (req, res) => {
-    const verifyToken = config.verifyToken;
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
 
-    if (mode === "subscribe" && token === verifyToken) {
-      console.log("✅ Webhook verificado correctamente con Meta");
+    if (mode === "subscribe" && token === config.verifyToken) {
+      console.log("✅ WEBHOOK VERIFICADO CORRECTAMENTE!");
       res.status(200).send(challenge);
     } else {
-      console.warn("❌ Falló la verificación del webhook");
+      console.log("❌ Error verificando webhook");
       res.sendStatus(403);
     }
   });
 
-  // ⚡ Endpoint para recibir mensajes de WhatsApp
+  // ✅ 2️⃣ Endpoint para recibir mensajes
   app.post("/webhook", async (req, res) => {
+    console.log("📩 Webhook recibido:", JSON.stringify(req.body, null, 2));
+
+    // ⚡ Meta necesita una respuesta rápida
+    res.sendStatus(200);
+
     try {
-      res.sendStatus(200); // responder rápido a Meta
-      await handleCtx(req.body); // procesar mensaje
+      await handleCtx(req.body); // procesa el mensaje con Builderbot
     } catch (err) {
       console.error("❌ Error en handleCtx:", err);
     }
   });
 
-  // 🚀 Iniciar servidor
+  // 🛜 Levantar servidor Express
   app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+    console.log(`[GET]: http://localhost:${PORT}/webhook`);
+    console.log(`[POST]: http://localhost:${PORT}/webhook`);
   });
+
+  // 🚀 Iniciar el bot internamente
+  httpServer(+PORT);
 };
 
 main();
