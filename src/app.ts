@@ -14,6 +14,7 @@ if (!fs.existsSync(logDir)) {
 const logPath = path.join(logDir, "core.class.log");
 const logStream = fs.createWriteStream(logPath, { flags: "a" });
 
+// 🎯 Redirigir console.log a archivo + consola
 const originalLog = console.log;
 console.log = function (...args) {
   logStream.write("[LOG] " + args.join(" ") + "\n");
@@ -26,32 +27,28 @@ app.use(express.json());
 const PORT = config.PORT || 8080;
 
 const main = async () => {
-  const { handleCtx, httpServer } = await createBot({
+  const { handleCtx } = await createBot({
     flow: templates,
-    provider: provider,
+    provider,
     database: new Database(),
   });
 
-  // 🧩 Builderbot ya crea el servidor en este punto
-  httpServer(+PORT);
+  // ✅ Endpoint para verificación inicial del webhook de Meta
+  app.get("/webhook", (req, res) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
 
-  // ✅ Endpoint para la verificación inicial de Meta
-app.get("/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
+    if (mode === "subscribe" && token === config.verifyToken) {
+      console.log("✅ Webhook verificado correctamente por Meta");
+      res.status(200).send(challenge);
+    } else {
+      console.error("❌ Verificación de Webhook fallida");
+      res.sendStatus(403);
+    }
+  });
 
-  if (mode === "subscribe" && token === config.verifyToken) {
-    console.log("✅ Webhook verificado correctamente por Meta");
-    res.status(200).send(challenge);
-  } else {
-    console.error("❌ Verificación de Webhook fallida");
-    res.sendStatus(403);
-  }
-});
-
-
-  // ⚡ Endpoint para recibir mensajes de Meta
+  // ✅ Endpoint para procesar mensajes de WhatsApp
   app.post("/webhook", async (req, res) => {
     try {
       res.sendStatus(200);
@@ -59,6 +56,11 @@ app.get("/webhook", (req, res) => {
     } catch (err) {
       console.error("❌ Error en handleCtx:", err);
     }
+  });
+
+  // 🚀 Iniciar servidor
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
   });
 };
 
